@@ -4,7 +4,7 @@ import { ref } from 'vue'
 const site = ref({
   name: 'BrunoZero',
   greeting: '你好我是 ',
-  tagline: '一句话介绍自己，比如：开发者 / 学生 / 创作者。',
+  tagline: '我是一个在南通打工的卖代码生活的狗🐶',
   about: '我的一个在南通打工的卖代码生活的狗🐶',
 })
 

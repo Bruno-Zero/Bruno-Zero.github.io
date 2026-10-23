@@ -15,6 +15,8 @@ const nav = [
   { id: 'contact', label: '联系' },
 ]
 
+const activeTab = ref('about')
+
 const experiences = [
   { title: '公司 / 学校名称', period: '2024 — 至今', role: '职位 / 专业', desc: '简单描述你在这里做了什么、学到什么。' },
   { title: '上一段经历', period: '2021 — 2024', role: '职位', desc: '描述内容。' },
@@ -38,42 +40,52 @@ const year = new Date().getFullYear()
       <p class="prompt mono">$ whoami</p>
       <h1>{{ site.greeting }}{{ site.name }}<span class="cursor"></span></h1>
       <p class="tagline">{{ site.tagline }}</p>
-      <nav class="mono">
-        <a v-for="item in nav" :key="item.id" :href="'#' + item.id">{{ item.label }}</a>
+      <nav class="tabs mono" role="tablist">
+        <button
+          v-for="item in nav"
+          :key="item.id"
+          class="tab"
+          :class="{ active: activeTab === item.id }"
+          role="tab"
+          :aria-selected="activeTab === item.id"
+          @click="activeTab = item.id"
+        >/{{ item.label }}</button>
       </nav>
     </header>
 
-    <section id="about">
-      <h2>关于我</h2>
-      <p style="color:var(--muted)">{{ site.about }}</p>
-    </section>
+    <main>
+      <section id="about" v-show="activeTab === 'about'" role="tabpanel">
+        <h2>关于我</h2>
+        <p style="color:var(--muted)">{{ site.about }}</p>
+      </section>
 
-    <section id="experience">
-      <h2>经历</h2>
-      <div class="card" v-for="exp in experiences" :key="exp.title + exp.period">
-        <h3>{{ exp.title }}</h3>
-        <p class="meta mono">{{ exp.period }} · {{ exp.role }}</p>
-        <p>{{ exp.desc }}</p>
-      </div>
-    </section>
+      <section id="experience" v-show="activeTab === 'experience'" role="tabpanel">
+        <h2>经历</h2>
+        <div class="card" v-for="exp in experiences" :key="exp.title + exp.period">
+          <h3>{{ exp.title }}</h3>
+          <p class="meta mono">{{ exp.period }} · {{ exp.role }}</p>
+          <p>{{ exp.desc }}</p>
+        </div>
+      </section>
 
-    <section id="projects">
-      <h2>作品</h2>
-      <div class="card" v-for="p in projects" :key="p.name">
-        <h3>{{ p.name }}</h3>
-        <p class="meta mono">{{ p.year }}</p>
-        <p>{{ p.desc }} <a v-if="p.link" :href="p.link">查看 →</a></p>
-      </div>
-    </section>
+      <section id="projects" v-show="activeTab === 'projects'" role="tabpanel">
+        <h2>作品</h2>
+        <div class="card" v-for="p in projects" :key="p.name">
+          <h3>{{ p.name }}</h3>
+          <p class="meta mono">{{ p.year }}</p>
+          <p>{{ p.desc }} <a v-if="p.link" :href="p.link">查看 →</a></p>
+        </div>
+      </section>
 
-    <section id="contact">
-      <h2>联系我</h2>
-      <ul>
-        <li v-for="c in contacts" :key="c.label">
-          {{ c.label }}：<a :href="c.href">{{ c.text }}</a>
-        </li>
-      </ul>
-    </section>
+      <section id="contact" v-show="activeTab === 'contact'" role="tabpanel">
+        <h2>联系我</h2>
+        <ul>
+          <li v-for="c in contacts" :key="c.label">
+            {{ c.label }}：<a :href="c.href">{{ c.text }}</a>
+          </li>
+        </ul>
+      </section>
+    </main>
 
     <footer class="mono">© {{ year }} {{ site.name }} · Powered by GitHub Pages · Built with Vite + Vue 3</footer>
   </div>
@@ -104,12 +116,20 @@ h1 .cursor { display: inline-block; width: 10px; height: 1.1em; background: var(
   vertical-align: text-bottom; animation: blink 1.1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 .tagline { color: var(--muted); margin-top: 12px; }
-nav { display: flex; gap: 26px; margin-top: 28px; flex-wrap: wrap; }
-nav a { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
-nav a::before { content: "./"; color: var(--muted); }
-nav a:hover { text-decoration: underline; }
-section { padding: 44px 0; border-bottom: 1px solid var(--border); }
-section:last-of-type { border-bottom: none; }
+nav.tabs {
+  display: flex; gap: 2px; margin-top: 28px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  background: none; border: none; cursor: pointer; font-family: inherit;
+  color: var(--muted); font-size: 0.9rem; padding: 10px 16px;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+main { min-height: 320px; }
+section { padding: 44px 0; }
 h2 {
   font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.2em;
   color: var(--accent); margin-bottom: 20px; font-weight: 600;

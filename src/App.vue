@@ -2,8 +2,8 @@
 import { ref } from 'vue'
 
 const site = ref({
-  name: '（你的名字）',
-  greeting: '你好，我是 ',
+  name: 'BrunoZero',
+  greeting: '你好我是 ',
   tagline: '一句话介绍自己，比如：开发者 / 学生 / 创作者。',
   about: '在这里写两三句自我介绍：你做什么、对什么感兴趣、正在学习或探索什么。',
 })

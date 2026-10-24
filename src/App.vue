@@ -37,7 +37,7 @@ const year = new Date().getFullYear()
 </script>
 
 <template>
-  <a-config-provider :theme="{
+  <ConfigProvider :theme="{
     algorithm: theme.darkAlgorithm,
     token: {
       colorPrimary: '#2dd4bf',
@@ -45,8 +45,18 @@ const year = new Date().getFullYear()
       colorBgElevated: '#161b22',
       colorBorder: '#30363d',
       colorText: '#e6edf3',
-      colorTextSecondary: '#8b949e',
+      colorTextSecondary: '#a3adb8',
       fontSize: 14,
+    },
+    components: {
+      Tabs: {
+        itemColor: '#a3adb8',
+        itemHoverColor: '#e6edf3',
+        itemSelectedColor: '#2dd4bf',
+        itemActiveColor: '#2dd4bf',
+        inkBarColor: '#2dd4bf',
+        titleFontSize: 14,
+      },
     },
   }">
   <div class="wrap">
@@ -95,7 +105,7 @@ const year = new Date().getFullYear()
 
     <footer class="mono">© {{ year }} {{ site.name }} · Powered by GitHub Pages · Built with Vite + Vue 3</footer>
   </div>
-  </a-config-provider>
+  </ConfigProvider>
 </template>
 
 <style>
@@ -128,7 +138,9 @@ h1 .cursor { display: inline-block; width: 10px; height: 1.1em; background: var(
 .page-tabs .ant-tabs-tab {
   font-family: "SF Mono", "JetBrains Mono", Consolas, monospace;
   font-size: 0.9rem; padding: 8px 18px;
+  transition: background 0.2s, color 0.2s;
 }
+.page-tabs .ant-tabs-tab:hover { background: rgba(255, 255, 255, 0.05); }
 .page-tabs .ant-tabs-content-holder { display: none; }
 main { min-height: 320px; }
 section { padding: 44px 0; }

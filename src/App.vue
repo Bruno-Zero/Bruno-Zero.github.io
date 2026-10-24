@@ -1,5 +1,7 @@
 <script setup>
 import { ref } from 'vue'
+import { ConfigProvider, Tabs, TabPane, theme } from 'ant-design-vue'
+import 'ant-design-vue/dist/reset.css'
 
 const site = ref({
   name: 'BrunoZero',
@@ -35,22 +37,26 @@ const year = new Date().getFullYear()
 </script>
 
 <template>
+  <a-config-provider :theme="{
+    algorithm: theme.darkAlgorithm,
+    token: {
+      colorPrimary: '#2dd4bf',
+      colorBgContainer: '#0d1117',
+      colorBgElevated: '#161b22',
+      colorBorder: '#30363d',
+      colorText: '#e6edf3',
+      colorTextSecondary: '#8b949e',
+      fontSize: 14,
+    },
+  }">
   <div class="wrap">
     <header>
       <p class="prompt mono">$ whoami</p>
       <h1>{{ site.greeting }}{{ site.name }}<span class="cursor"></span></h1>
       <p class="tagline">{{ site.tagline }}</p>
-      <nav class="tabs mono" role="tablist">
-        <button
-          v-for="item in nav"
-          :key="item.id"
-          class="tab"
-          :class="{ active: activeTab === item.id }"
-          role="tab"
-          :aria-selected="activeTab === item.id"
-          @click="activeTab = item.id"
-        >/{{ item.label }}</button>
-      </nav>
+      <Tabs v-model:activeKey="activeTab" class="page-tabs" size="small">
+        <TabPane v-for="item in nav" :key="item.id" :tab="'/' + item.label" />
+      </Tabs>
     </header>
 
     <main>
@@ -89,6 +95,7 @@ const year = new Date().getFullYear()
 
     <footer class="mono">© {{ year }} {{ site.name }} · Powered by GitHub Pages · Built with Vite + Vue 3</footer>
   </div>
+  </a-config-provider>
 </template>
 
 <style>
@@ -116,18 +123,13 @@ h1 .cursor { display: inline-block; width: 10px; height: 1.1em; background: var(
   vertical-align: text-bottom; animation: blink 1.1s steps(1) infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 .tagline { color: var(--muted); margin-top: 12px; }
-nav.tabs {
-  display: flex; gap: 2px; margin-top: 28px; flex-wrap: wrap;
-  border-bottom: 1px solid var(--border);
+.page-tabs { margin-top: 24px; }
+.page-tabs .ant-tabs-nav { margin-bottom: 0; }
+.page-tabs .ant-tabs-tab {
+  font-family: "SF Mono", "JetBrains Mono", Consolas, monospace;
+  font-size: 0.9rem; padding: 8px 18px;
 }
-.tab {
-  background: none; border: none; cursor: pointer; font-family: inherit;
-  color: var(--muted); font-size: 0.9rem; padding: 10px 16px;
-  border-bottom: 2px solid transparent; margin-bottom: -1px;
-  transition: color 0.15s, border-color 0.15s;
-}
-.tab:hover { color: var(--ink); }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.page-tabs .ant-tabs-content-holder { display: none; }
 main { min-height: 320px; }
 section { padding: 44px 0; }
 h2 {

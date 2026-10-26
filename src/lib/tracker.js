@@ -1,5 +1,7 @@
 // ---- 访客打点：页面加载时向 Worker 上报一次访问 ----
 // 未部署 Worker（VITE_API_BASE 为空）时静默跳过，不影响其他功能
+import { getApiPassword } from './auth'
+
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 export function trackVisit() {
@@ -19,11 +21,11 @@ export function trackVisit() {
   }
 }
 
-// ---- 拉取访客统计（管理员） ----
+// ---- 拉取访客统计（管理员，携带登录密码作 API 口令） ----
 export async function fetchStats() {
   if (!API_BASE) return null
   const res = await fetch(`${API_BASE}/api/stats`, {
-    headers: { 'X-Admin-Password': import.meta.env.VITE_API_PASSWORD || '' },
+    headers: { 'X-Admin-Password': getApiPassword() },
   })
   if (!res.ok) return null
   return res.json()

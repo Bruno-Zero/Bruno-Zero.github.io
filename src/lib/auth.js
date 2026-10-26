@@ -5,7 +5,9 @@
 const DEFAULT_HASH = '2cfaa161782a6401ae3f7cead8f4088f46a156962fa50d9db7174f98275df555'
 export const ADMIN_HASH = import.meta.env.VITE_ADMIN_HASH || DEFAULT_HASH
 
+// 登录态与 API 口令存在 sessionStorage：仅当前标签页会话有效，关闭标签页即失效
 const AUTH_KEY = 'brunozero_admin_session'
+const API_PW_KEY = 'brunozero_admin_api_pw'
 
 export async function sha256(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
@@ -19,10 +21,21 @@ export async function verifyPassword(pw) {
 }
 
 export function isLoggedIn() {
-  return localStorage.getItem(AUTH_KEY) === '1'
+  return sessionStorage.getItem(AUTH_KEY) === '1'
 }
 
-export function setLoggedIn(v) {
-  if (v) localStorage.setItem(AUTH_KEY, '1')
-  else localStorage.removeItem(AUTH_KEY)
+// 登录：记录会话 + 保存 API 口令（用于调 Worker 写接口 / 统计接口）
+export function setLoggedIn(v, pw) {
+  if (v) {
+    sessionStorage.setItem(AUTH_KEY, '1')
+    if (pw) sessionStorage.setItem(API_PW_KEY, pw)
+  } else {
+    sessionStorage.removeItem(AUTH_KEY)
+    sessionStorage.removeItem(API_PW_KEY)
+  }
+}
+
+// 后端 API 口令（Worker 的 ADMIN_PASSWORD = 管理员登录密码）
+export function getApiPassword() {
+  return sessionStorage.getItem(API_PW_KEY) || ''
 }

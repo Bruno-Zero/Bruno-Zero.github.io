@@ -11,6 +11,10 @@ import LoginModal from './components/LoginModal.vue'
 import AdminDashboard from './components/AdminDashboard.vue'
 import { store } from './lib/store'
 import { isLoggedIn, setLoggedIn } from './lib/auth'
+import { trackVisit } from './lib/tracker'
+
+// 访客打点（Worker 部署后自动上报；未部署则静默跳过）
+trackVisit()
 
 const site = store.site
 

@@ -1,6 +1,9 @@
 /**
  * BrunoZero 个人主页 — 后台数据 API + 访客统计（Cloudflare Worker + Neon PostgreSQL）
  *
+ * 零依赖版本：不使用 npm 包（@neondatabase/serverless），直接调用 Neon 的 HTTP SQL 端点，
+ * 部署时不需要安装任何依赖，单文件即可 npx wrangler deploy。
+ *
  * 作用：给 GitHub Pages 静态站提供一个"小后端"，安全地持有 Neon 数据库连接串，
  *      前端（VITE_API_BASE 指向本 Worker）通过它：
  *        - 读写主页内容（所有访客可见）
@@ -10,32 +13,72 @@
  *   GET  /api/data   — 公开读取主页内容
  *   POST /api/data   — 管理员写入主页内容（X-Admin-Password）
  *   POST /api/visit  — 公开访客打点（30 秒 / IP 限流）
- *   GET  /api/stats  — 管理员统计（X-Admin-Password）：今日/昨日/总访问/近7日/来源Top
+ *   GET  /api/stats  — 管理员统计（X-Admin-Password）：今日/昨日/总访问/近7日/路径Top/来源Top
  *
  * 部署步骤：
- * 1. 安装 wrangler：npm i -g wrangler（或 npx wrangler）
- * 2. 登录：npx wrangler login
- * 3. 部署本文件：npx wrangler deploy worker.js
- * 4. 设置 Secrets（连接串与口令只存在 Worker 里，不暴露给前端）：
+ * 1. 登录：npx wrangler login
+ * 2. 部署本文件：npx wrangler deploy worker.js
+ * 3. 设置 Secrets（连接串与口令只存在 Worker 里，不暴露给前端）：
  *      npx wrangler secret put NEON_DATABASE_URL   # 你的 Neon PostgreSQL 连接串
- *      npx wrangler secret put ADMIN_PASSWORD      # 管理员口令（与前端 VITE_API_PASSWORD 一致）
- * 5. 前端构建时设置环境变量（.env 或构建环境）：
+ *      npx wrangler secret put ADMIN_PASSWORD      # 后台登录密码（与前端登录密码一致）
+ * 4. 前端构建时设置环境变量：
  *      VITE_API_BASE=https://你的-worker名.workers.dev
- *      VITE_API_PASSWORD=与上面 ADMIN_PASSWORD 相同
  *
  * 数据库结构（首次请求自动建表）：
  *   CREATE TABLE IF NOT EXISTS site_data (id int primary key, data jsonb not null);
  *   CREATE TABLE IF NOT EXISTS visits (
  *     id bigserial primary key,
  *     ts timestamptz not null default now(),
- *     ip text,
- *     ua text,
- *     path text,
- *     ref text
+ *     ip text, ua text, path text, ref text
  *   );
  *   CREATE INDEX IF NOT EXISTS idx_visits_ts ON visits (ts);
+ *
+ * 说明：
+ * - Neon HTTP SQL 端点：https://<host>/sql（POST {query, params}），返回 {fields, data}。
+ * - 连接串若带 -pooler（池化域名），HTTP driver 不支持，需去掉 -pooler 后缀。
+ * - 所有用户输入一律走 $1/$2... 参数化，杜绝 SQL 注入。
  */
-import { neon } from '@neondatabase/serverless'
+
+// ---------- 零依赖 Neon HTTP driver ----------
+function parseConn(connStr) {
+  const u = new URL(connStr)
+  return {
+    host: u.hostname.replace('-pooler', ''), // HTTP driver 不支持池化域名，去掉 -pooler
+    user: decodeURIComponent(u.username),
+    pass: decodeURIComponent(u.password),
+  }
+}
+
+function makeSql(connStr) {
+  const { host, user, pass } = parseConn(connStr)
+  let auth
+  try {
+    auth = 'Basic ' + btoa(user + ':' + pass)
+  } catch (e) {
+    throw new Error('数据库连接串用户名或密码包含非 ASCII 字符，请更换连接串')
+  }
+  // 返回 (text, params) => 行对象数组
+  return async function sql(text, params = []) {
+    const res = await fetch(`https://${host}/sql`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: auth },
+      body: JSON.stringify({ query: text, params }),
+    })
+    if (!res.ok) {
+      const detail = (await res.text()).slice(0, 300)
+      throw new Error(`Neon HTTP ${res.status}: ${detail}`)
+    }
+    const out = await res.json()
+    const fields = (out.fields || []).map((f) => f.name)
+    return (out.data || []).map((row) => {
+      const o = {}
+      fields.forEach((name, i) => {
+        o[name] = row[i]
+      })
+      return o
+    })
+  }
+}
 
 const DATA_TABLE = 'site_data'
 const VISIT_TABLE = 'visits'
@@ -81,12 +124,12 @@ export default {
       if (!env.NEON_DATABASE_URL) {
         return json({ error: 'NEON_DATABASE_URL not set' }, 500, cors)
       }
-      const sql = neon(env.NEON_DATABASE_URL)
+      const sql = makeSql(env.NEON_DATABASE_URL)
 
       // ---------- GET /api/data — 公开读取主页内容 ----------
       if (request.method === 'GET' && url.pathname === '/api/data') {
         await ensureDataTable(sql)
-        const rows = await sql(`SELECT data FROM ${DATA_TABLE} WHERE id = ${ROW_ID}`)
+        const rows = await sql(`SELECT data FROM ${DATA_TABLE} WHERE id = $1`, [ROW_ID])
         return json(rows.length ? rows[0].data : null, 200, cors)
       }
 
@@ -102,8 +145,9 @@ export default {
         }
         await ensureDataTable(sql)
         await sql(
-          `INSERT INTO ${DATA_TABLE} (id, data) VALUES (${ROW_ID}, ${JSON.stringify(body)})
-           ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`
+          `INSERT INTO ${DATA_TABLE} (id, data) VALUES ($1, $2::jsonb)
+           ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`,
+          [ROW_ID, JSON.stringify(body)]
         )
         return json({ ok: true }, 200, cors)
       }
@@ -119,13 +163,17 @@ export default {
         // 简单限流：同一 IP 30 秒内最多记 1 条
         if (ip) {
           const recent = await sql(
-            `SELECT 1 FROM ${VISIT_TABLE} WHERE ip = ${ip} AND ts > now() - interval '30 seconds' LIMIT 1`
+            `SELECT 1 FROM ${VISIT_TABLE} WHERE ip = $1 AND ts > now() - interval '30 seconds' LIMIT 1`,
+            [ip]
           )
           if (recent.length) {
             return json({ ok: true, throttled: true }, 200, cors)
           }
         }
-        await sql(`INSERT INTO ${VISIT_TABLE} (ip, ua, path, ref) VALUES (${ip}, ${ua}, ${path}, ${ref})`)
+        await sql(
+          `INSERT INTO ${VISIT_TABLE} (ip, ua, path, ref) VALUES ($1, $2, $3, $4)`,
+          [ip, ua, path, ref]
+        )
         return json({ ok: true }, 200, cors)
       }
 

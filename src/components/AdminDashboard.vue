@@ -1,10 +1,11 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   Layout, Menu, MenuItem, Button, Space, Input, Card, Badge, Divider, message,
 } from 'ant-design-vue'
 import { store, saveData, API_BASE, DEFAULTS } from '../lib/store'
 import { setLoggedIn } from '../lib/auth'
+import { fetchStats } from '../lib/tracker'
 
 const emit = defineEmits(['exit'])
 
@@ -70,6 +71,53 @@ function handleLogout() {
   emit('exit')
 }
 
+// ---------- 访客统计 ----------
+const visitStats = ref(null)
+const statsLoading = ref(false)
+const statsError = ref('')
+
+async function loadStats() {
+  if (!API_BASE) {
+    visitStats.value = null
+    return
+  }
+  statsLoading.value = true
+  statsError.value = ''
+  const data = await fetchStats()
+  statsLoading.value = false
+  if (!data) {
+    statsError.value = '统计加载失败：Worker 未部署或口令不一致'
+    return
+  }
+  visitStats.value = data
+}
+
+// 近 7 日序列（补全无访问的日期）
+const chart7 = computed(() => {
+  if (!visitStats.value?.last7) return []
+  const map = {}
+  visitStats.value.last7.forEach((r) => (map[r.d] = r.n))
+  const days = []
+  const now = new Date()
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now)
+    d.setDate(now.getDate() - i)
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    const key = `${y}-${m}-${dd}`
+    days.push({ date: key.slice(5), n: map[key] || 0 })
+  }
+  return days
+})
+const max7 = computed(() => Math.max(1, ...chart7.value.map((d) => d.n)))
+const total7 = computed(() => chart7.value.reduce((s, d) => s + d.n, 0))
+
+// 切到统计视图时加载
+watch(view, (v) => {
+  if (v === 'stats') loadStats()
+})
+
 // ---------- 仪表盘统计 ----------
 const stats = computed(() => [
   { label: '经历', value: form.experiences.length, color: '#2dd4bf', icon: '💼' },
@@ -90,6 +138,7 @@ const stats = computed(() => [
       <Menu v-model:selectedKeys="selectedKeys" class="admin-menu">
         <MenuItem key="overview">📊 仪表盘</MenuItem>
         <MenuItem key="content">📝 内容管理</MenuItem>
+        <MenuItem key="stats">📈 访客统计</MenuItem>
         <MenuItem key="settings">⚙️ 设置</MenuItem>
       </Menu>
       <div class="admin-sider-foot">
@@ -102,7 +151,7 @@ const stats = computed(() => [
     <Layout>
       <Layout.Header class="admin-header">
         <span class="admin-header-title mono">
-          {{ view === 'overview' ? '仪表盘' : view === 'content' ? '内容管理' : '设置' }}
+          {{ view === 'overview' ? '仪表盘' : view === 'content' ? '内容管理' : view === 'stats' ? '访客统计' : '设置' }}
         </span>
         <Space>
           <Badge
@@ -206,6 +255,86 @@ const stats = computed(() => [
             <Button type="primary" :loading="saving" @click="handleSave">保存全部内容</Button>
             <span v-if="saveResult" class="ov-save mono">{{ saveResult }}</span>
           </div>
+        </div>
+
+        <!-- 访客统计 -->
+        <div v-else-if="view === 'stats'" class="admin-stats">
+          <div v-if="!API_BASE" class="stat-empty">
+            <div class="stat-empty-icon">📈</div>
+            <p>访客统计需要部署数据库 Worker 后启用。</p>
+            <p class="set-desc">部署 Cloudflare Worker（cloudflare/worker.js）并设置 <code class="mono">VITE_API_BASE</code> 构建后，这里会显示今日 / 总访问与趋势。</p>
+          </div>
+          <template v-else>
+            <div v-if="statsError" class="stat-empty">
+              <div class="stat-empty-icon">⚠️</div>
+              <p>{{ statsError }}</p>
+            </div>
+            <template v-else>
+              <div class="stat-grid">
+                <Card size="small" class="stat-card">
+                  <div class="stat-icon" style="background:#2dd4bf22;color:#2dd4bf">🟢</div>
+                  <div>
+                    <div class="stat-value mono">{{ visitStats?.today ?? (statsLoading ? '…' : '-') }}</div>
+                    <div class="stat-label">今日访问</div>
+                  </div>
+                </Card>
+                <Card size="small" class="stat-card">
+                  <div class="stat-icon" style="background:#818cf822;color:#818cf8">🌙</div>
+                  <div>
+                    <div class="stat-value mono">{{ visitStats?.yesterday ?? (statsLoading ? '…' : '-') }}</div>
+                    <div class="stat-label">昨日访问</div>
+                  </div>
+                </Card>
+                <Card size="small" class="stat-card">
+                  <div class="stat-icon" style="background:#fbbf2422;color:#fbbf24">📅</div>
+                  <div>
+                    <div class="stat-value mono">{{ total7 }}</div>
+                    <div class="stat-label">近 7 日</div>
+                  </div>
+                </Card>
+                <Card size="small" class="stat-card">
+                  <div class="stat-icon" style="background:#f472b622;color:#f472b6">🌐</div>
+                  <div>
+                    <div class="stat-value mono">{{ visitStats?.total ?? (statsLoading ? '…' : '-') }}</div>
+                    <div class="stat-label">总访问</div>
+                  </div>
+                </Card>
+              </div>
+
+              <Card size="small" title="近 7 日访问趋势" class="sec-card">
+                <div class="bar-chart">
+                  <div v-for="d in chart7" :key="d.date" class="bar-col">
+                    <div class="bar-val mono">{{ d.n }}</div>
+                    <div class="bar-wrap">
+                      <div class="bar" :style="{ height: (d.n / max7 * 100) + '%' }"></div>
+                    </div>
+                    <div class="bar-date mono">{{ d.date }}</div>
+                  </div>
+                </div>
+              </Card>
+
+              <div class="stat-cols">
+                <Card size="small" title="热门路径 Top" class="sec-card">
+                  <ul class="stat-list">
+                    <li v-for="p in visitStats?.topPaths ?? []" :key="p.path">
+                      <span class="mono stat-name">{{ p.path }}</span>
+                      <b class="mono stat-n">{{ p.n }}</b>
+                    </li>
+                    <li v-if="!(visitStats?.topPaths?.length)" class="stat-none">暂无数据</li>
+                  </ul>
+                </Card>
+                <Card size="small" title="来源 Top" class="sec-card">
+                  <ul class="stat-list">
+                    <li v-for="r in visitStats?.topRefs ?? []" :key="r.ref">
+                      <span class="stat-name">{{ r.ref }}</span>
+                      <b class="mono stat-n">{{ r.n }}</b>
+                    </li>
+                    <li v-if="!(visitStats?.topRefs?.length)" class="stat-none">暂无数据</li>
+                  </ul>
+                </Card>
+              </div>
+            </template>
+          </template>
         </div>
 
         <!-- 设置 -->
@@ -326,6 +455,34 @@ const stats = computed(() => [
 .set-line { color: var(--ink); }
 .set-desc { color: var(--muted); font-size: 0.88rem; margin-bottom: 10px; }
 .set-desc code { color: var(--accent); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; font-size: 0.82rem; }
+.stat-empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+.stat-empty-icon { font-size: 2.4rem; margin-bottom: 12px; }
+.stat-empty p { margin-bottom: 6px; }
+.bar-chart {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 8px; height: 160px; padding: 8px 4px 0;
+}
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.bar-val { color: var(--muted); font-size: 0.75rem; margin-bottom: 4px; }
+.bar-wrap { flex: 1; width: 100%; max-width: 34px; display: flex; align-items: flex-end; }
+.bar {
+  width: 100%; border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, #2dd4bf, rgba(45, 212, 191, 0.45));
+  min-height: 2px; transition: height 0.4s;
+}
+.bar-date { color: var(--muted); font-size: 0.72rem; margin-top: 6px; }
+.stat-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .stat-cols { grid-template-columns: 1fr; } }
+.stat-list { list-style: none; padding: 0; margin: 0; }
+.stat-list li {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 2px; border-bottom: 1px dashed var(--border);
+  font-size: 0.85rem;
+}
+.stat-list li:last-child { border-bottom: none; }
+.stat-name { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 75%; }
+.stat-n { color: var(--accent); }
+.stat-none { color: var(--muted); justify-content: center; }
 .admin-dash :deep(.ant-card) { background: var(--panel); border-color: var(--border); }
 .admin-dash :deep(.ant-input), .admin-dash :deep(.ant-input-affix-wrapper) {
   background: #0d1117; border-color: var(--border); color: var(--ink);

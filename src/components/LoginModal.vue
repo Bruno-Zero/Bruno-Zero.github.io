@@ -20,7 +20,7 @@ async function handleOk() {
   const ok = await verifyPassword(pw.value)
   loading.value = false
   if (ok) {
-    setLoggedIn(true)
+    setLoggedIn(true, pw.value)
     message.success('登录成功')
     emit('success')
   } else {

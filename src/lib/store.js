@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { getApiPassword } from './auth'
 
 // ---- 默认内容（组件化重构前的原始数据）----
 export const DEFAULTS = {
@@ -26,8 +27,6 @@ const STORAGE_KEY = 'brunozero_admin_data_v1'
 // ---- 数据后端：默认 localStorage；部署 Neon Worker 后设置 VITE_API_BASE 切换为云端 ----
 // 构建时通过环境变量注入：VITE_API_BASE=https://your-worker.workers.dev
 export const API_BASE = import.meta.env.VITE_API_BASE || ''
-// 云端写操作需要管理员口令（与 Worker 内校验一致）
-export const API_PASSWORD = import.meta.env.VITE_API_PASSWORD || ''
 
 function loadLocal() {
   try {
@@ -93,7 +92,7 @@ export async function saveToCloud() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Admin-Password': API_PASSWORD,
+      'X-Admin-Password': getApiPassword(),
     },
     body: JSON.stringify({
       site: store.site,

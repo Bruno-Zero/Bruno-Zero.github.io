@@ -19,13 +19,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci || npm install
-      - run: npm run build
-      - run: mkdir -p dist/minecraft && cp index.html dist/minecraft/index.html
+      - run: |
+          mkdir -p public/minecraft
+          mv index.html public/minecraft/index.html
+          git show 9e08699:index.html > index.html
+          npm ci || npm install
+          npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

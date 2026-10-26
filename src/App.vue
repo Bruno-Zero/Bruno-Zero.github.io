@@ -2,6 +2,11 @@
 import { ref } from 'vue'
 import { ConfigProvider, Tabs, TabPane, theme } from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
+import AboutSection from './components/AboutSection.vue'
+import ExperienceSection from './components/ExperienceSection.vue'
+import ProjectsSection from './components/ProjectsSection.vue'
+import ContactSection from './components/ContactSection.vue'
+import GameSection from './components/GameSection.vue'
 
 const site = ref({
   name: 'BrunoZero',
@@ -19,20 +24,6 @@ const nav = [
 ]
 
 const activeTab = ref('about')
-
-const experiences = [
-  { title: '公司 / 学校名称', period: '2024 — 至今', role: '职位 / 专业', desc: '简单描述你在这里做了什么、学到什么。' },
-  { title: '上一段经历', period: '2021 — 2024', role: '职位', desc: '描述内容。' },
-]
-
-const projects = [
-  { name: '项目名称', year: '2025', desc: '一句话介绍这个项目。', link: '#' },
-]
-
-const contacts = [
-  { label: '邮箱', text: 'you@example.com', href: 'mailto:you@example.com' },
-  { label: 'GitHub', text: 'github.com/Bruno-Zero', href: 'https://github.com/Bruno-Zero' },
-]
 
 const year = new Date().getFullYear()
 </script>
@@ -71,46 +62,11 @@ const year = new Date().getFullYear()
     </header>
 
     <main>
-      <section id="about" v-show="activeTab === 'about'" role="tabpanel">
-        <h2>关于我</h2>
-        <p style="color:var(--muted)">{{ site.about }}</p>
-      </section>
-
-      <section id="experience" v-show="activeTab === 'experience'" role="tabpanel">
-        <h2>经历</h2>
-        <div class="card" v-for="exp in experiences" :key="exp.title + exp.period">
-          <h3>{{ exp.title }}</h3>
-          <p class="meta mono">{{ exp.period }} · {{ exp.role }}</p>
-          <p>{{ exp.desc }}</p>
-        </div>
-      </section>
-
-      <section id="projects" v-show="activeTab === 'projects'" role="tabpanel">
-        <h2>作品</h2>
-        <div class="card" v-for="p in projects" :key="p.name">
-          <h3>{{ p.name }}</h3>
-          <p class="meta mono">{{ p.year }}</p>
-          <p>{{ p.desc }} <a v-if="p.link" :href="p.link">查看 →</a></p>
-        </div>
-      </section>
-
-      <section id="contact" v-show="activeTab === 'contact'" role="tabpanel">
-        <h2>联系我</h2>
-        <ul>
-          <li v-for="c in contacts" :key="c.label">
-            {{ c.label }}：<a :href="c.href">{{ c.text }}</a>
-          </li>
-        </ul>
-      </section>
-
-      <section id="game" v-show="activeTab === 'game'" role="tabpanel">
-        <h2>玩 Minecraft 🎮</h2>
-        <p style="color:var(--muted); margin-bottom: 14px;">网页版 Minecraft（EaglercraftX 1.8.8），无需下载，存档自动保存在浏览器里。加载约需十几秒，如果画面空白请稍等片刻。</p>
-        <a class="play-link mono" href="/minecraft/" target="_blank">全屏开始游戏 →</a>
-        <div class="game-frame">
-          <iframe src="/minecraft/" loading="lazy" allowfullscreen></iframe>
-        </div>
-      </section>
+      <AboutSection v-show="activeTab === 'about'" :about="site.about" />
+      <ExperienceSection v-show="activeTab === 'experience'" />
+      <ProjectsSection v-show="activeTab === 'projects'" />
+      <ContactSection v-show="activeTab === 'contact'" />
+      <GameSection v-show="activeTab === 'game'" />
     </main>
 
     <footer class="mono">© {{ year }} {{ site.name }} · Powered by GitHub Pages · Built with Vite + Vue 3</footer>

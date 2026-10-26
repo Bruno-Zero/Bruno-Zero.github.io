@@ -15,6 +15,7 @@ const nav = [
   { id: 'experience', label: '经历' },
   { id: 'projects', label: '作品' },
   { id: 'contact', label: '联系' },
+  { id: 'game', label: '游戏' },
 ]
 
 const activeTab = ref('about')
@@ -101,6 +102,15 @@ const year = new Date().getFullYear()
           </li>
         </ul>
       </section>
+
+      <section id="game" v-show="activeTab === 'game'" role="tabpanel">
+        <h2>玩 Minecraft 🎮</h2>
+        <p style="color:var(--muted); margin-bottom: 14px;">网页版 Minecraft（EaglercraftX 1.8.8），无需下载，存档自动保存在浏览器里。加载约需十几秒，如果画面空白请稍等片刻。</p>
+        <a class="play-link mono" href="/minecraft/" target="_blank">全屏开始游戏 →</a>
+        <div class="game-frame">
+          <iframe src="/minecraft/" loading="lazy" allowfullscreen></iframe>
+        </div>
+      </section>
     </main>
 
     <footer class="mono">© {{ year }} {{ site.name }} · Powered by GitHub Pages · Built with Vite + Vue 3</footer>
@@ -159,6 +169,16 @@ h2::before { content: "## "; color: var(--muted); }
 .card a { color: var(--accent); text-decoration: none; }
 .card a:hover { text-decoration: underline; }
 ul { padding-left: 1.2em; color: var(--muted); }
+.play-link {
+  display: inline-block; color: var(--accent); text-decoration: none;
+  border: 1px solid var(--accent); border-radius: 6px; padding: 8px 18px;
+  margin-bottom: 16px; transition: background 0.2s;
+}
+.play-link:hover { background: rgba(45, 212, 191, 0.12); }
+.game-frame iframe {
+  width: 100%; height: 62vh; min-height: 420px;
+  border: 1px solid var(--border); border-radius: 8px; background: #000;
+}
 footer { padding: 32px 0 64px; color: var(--muted); font-size: 0.8rem; text-align: center; }
 a { color: var(--accent); }
 @media (max-width: 600px) { header { padding: 52px 0 30px; } h1 { font-size: 1.5rem; } }

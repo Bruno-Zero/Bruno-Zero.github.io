@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ConfigProvider, Tabs, TabPane, theme, Button, Space } from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 import AboutSection from './components/AboutSection.vue'
@@ -8,7 +8,7 @@ import ProjectsSection from './components/ProjectsSection.vue'
 import ContactSection from './components/ContactSection.vue'
 import GameSection from './components/GameSection.vue'
 import LoginModal from './components/LoginModal.vue'
-import AdminSection from './components/AdminSection.vue'
+import AdminDashboard from './components/AdminDashboard.vue'
 import { store } from './lib/store'
 import { isLoggedIn, setLoggedIn } from './lib/auth'
 
@@ -24,6 +24,8 @@ const baseNav = [
 
 const isAdmin = ref(isLoggedIn())
 const loginOpen = ref(false)
+// 全屏后台视图：登录后点"管理"tab 进入
+const adminView = ref(false)
 
 const nav = computed(() => (isAdmin.value ? [...baseNav, { id: 'admin', label: '管理' }] : baseNav))
 
@@ -40,8 +42,20 @@ function handleLoginSuccess() {
 function handleLogout() {
   setLoggedIn(false)
   isAdmin.value = false
+  adminView.value = false
   if (activeTab.value === 'admin') activeTab.value = 'about'
 }
+
+function exitAdmin() {
+  adminView.value = false
+  activeTab.value = 'about'
+}
+
+// 点"管理"tab 进入全屏后台；点其他 tab 退出后台视图
+watch(activeTab, (v) => {
+  if (v === 'admin' && isAdmin.value) adminView.value = true
+  else adminView.value = false
+})
 </script>
 
 <template>
@@ -84,12 +98,14 @@ function handleLogout() {
     </header>
 
     <main>
-      <AboutSection v-show="activeTab === 'about'" :about="site.about" />
-      <ExperienceSection v-show="activeTab === 'experience'" />
-      <ProjectsSection v-show="activeTab === 'projects'" />
-      <ContactSection v-show="activeTab === 'contact'" />
-      <GameSection v-show="activeTab === 'game'" />
-      <AdminSection v-if="isAdmin && activeTab === 'admin'" />
+      <AdminDashboard v-if="isAdmin && adminView" @exit="exitAdmin" />
+      <template v-else>
+        <AboutSection v-show="activeTab === 'about'" :about="site.about" />
+        <ExperienceSection v-show="activeTab === 'experience'" />
+        <ProjectsSection v-show="activeTab === 'projects'" />
+        <ContactSection v-show="activeTab === 'contact'" />
+        <GameSection v-show="activeTab === 'game'" />
+      </template>
     </main>
 
     <footer class="mono">© {{ year }} {{ site.name }} · Powered by GitHub Pages · Built with Vite + Vue 3</footer>

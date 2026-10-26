@@ -1,21 +1,20 @@
 <script setup>
-import { ref } from 'vue'
-import { ConfigProvider, Tabs, TabPane, theme } from 'ant-design-vue'
+import { ref, computed } from 'vue'
+import { ConfigProvider, Tabs, TabPane, theme, Button, Space } from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 import AboutSection from './components/AboutSection.vue'
 import ExperienceSection from './components/ExperienceSection.vue'
 import ProjectsSection from './components/ProjectsSection.vue'
 import ContactSection from './components/ContactSection.vue'
 import GameSection from './components/GameSection.vue'
+import LoginModal from './components/LoginModal.vue'
+import AdminSection from './components/AdminSection.vue'
+import { store } from './lib/store'
+import { isLoggedIn, setLoggedIn } from './lib/auth'
 
-const site = ref({
-  name: 'BrunoZero',
-  greeting: '你好我是 ',
-  tagline: '我是一个在南通打工的卖代码生活的狗🐶',
-  about: '我的一个在南通打工的卖代码生活的狗🐶',
-})
+const site = store.site
 
-const nav = [
+const baseNav = [
   { id: 'about', label: '关于' },
   { id: 'experience', label: '经历' },
   { id: 'projects', label: '作品' },
@@ -23,9 +22,26 @@ const nav = [
   { id: 'game', label: '游戏' },
 ]
 
+const isAdmin = ref(isLoggedIn())
+const loginOpen = ref(false)
+
+const nav = computed(() => (isAdmin.value ? [...baseNav, { id: 'admin', label: '管理' }] : baseNav))
+
 const activeTab = ref('about')
 
 const year = new Date().getFullYear()
+
+function handleLoginSuccess() {
+  isAdmin.value = true
+  loginOpen.value = false
+  activeTab.value = 'admin'
+}
+
+function handleLogout() {
+  setLoggedIn(false)
+  isAdmin.value = false
+  if (activeTab.value === 'admin') activeTab.value = 'about'
+}
 </script>
 
 <template>
@@ -53,7 +69,13 @@ const year = new Date().getFullYear()
   }">
   <div class="wrap">
     <header>
-      <p class="prompt mono">$ whoami</p>
+      <div class="header-top">
+        <p class="prompt mono">$ whoami</p>
+        <Space class="admin-actions">
+          <Button v-if="!isAdmin" size="small" type="link" class="login-btn" @click="loginOpen = true">登录</Button>
+          <Button v-else size="small" type="link" class="login-btn" @click="handleLogout">退出</Button>
+        </Space>
+      </div>
       <h1>{{ site.greeting }}{{ site.name }}<span class="cursor"></span></h1>
       <p class="tagline">{{ site.tagline }}</p>
       <Tabs v-model:activeKey="activeTab" class="page-tabs" size="small">
@@ -67,10 +89,13 @@ const year = new Date().getFullYear()
       <ProjectsSection v-show="activeTab === 'projects'" />
       <ContactSection v-show="activeTab === 'contact'" />
       <GameSection v-show="activeTab === 'game'" />
+      <AdminSection v-if="isAdmin && activeTab === 'admin'" />
     </main>
 
     <footer class="mono">© {{ year }} {{ site.name }} · Powered by GitHub Pages · Built with Vite + Vue 3</footer>
   </div>
+
+  <LoginModal :open="loginOpen" @close="loginOpen = false" @success="handleLoginSuccess" />
   </ConfigProvider>
 </template>
 
@@ -93,7 +118,10 @@ body {
 .mono { font-family: "SF Mono", "JetBrains Mono", Consolas, monospace; }
 .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
 header { padding: 80px 0 44px; border-bottom: 1px solid var(--border); }
+.header-top { display: flex; align-items: center; justify-content: space-between; }
 .prompt { color: var(--accent); font-size: 0.9rem; }
+.login-btn { color: var(--muted); padding: 0; }
+.login-btn:hover { color: var(--accent) !important; }
 h1 { font-size: 2rem; font-weight: 700; margin-top: 8px; letter-spacing: 0.01em; }
 h1 .cursor { display: inline-block; width: 10px; height: 1.1em; background: var(--accent);
   vertical-align: text-bottom; animation: blink 1.1s steps(1) infinite; }

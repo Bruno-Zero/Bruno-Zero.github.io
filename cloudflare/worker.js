@@ -44,24 +44,19 @@ function parseConn(connStr) {
   const u = new URL(connStr)
   return {
     host: u.hostname.replace('-pooler', ''), // HTTP driver 不支持池化域名，去掉 -pooler
-    user: decodeURIComponent(u.username),
-    pass: decodeURIComponent(u.password),
   }
 }
 
 function makeSql(connStr) {
-  const { host, user, pass } = parseConn(connStr)
-  let auth
-  try {
-    auth = 'Basic ' + btoa(user + ':' + pass)
-  } catch (e) {
-    throw new Error('数据库连接串用户名或密码包含非 ASCII 字符，请更换连接串')
-  }
-  // 返回 (text, params) => 行对象数组
+  const { host } = parseConn(connStr)
+  // Neon HTTP SQL 端点通过 neon-connection-string 请求头传递连接串
   return async function sql(text, params = []) {
     const res = await fetch(`https://${host}/sql`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: auth },
+      headers: {
+        'content-type': 'application/json',
+        'neon-connection-string': connStr,
+      },
       body: JSON.stringify({ query: text, params }),
     })
     if (!res.ok) {

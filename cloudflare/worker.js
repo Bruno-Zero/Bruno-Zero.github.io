@@ -65,10 +65,10 @@ function makeSql(connStr) {
     }
     const out = await res.json()
     const fields = (out.fields || []).map((f) => f.name)
-    return (out.data || []).map((row) => {
+    return (out.rows || []).map((row) => {
       const o = {}
-      fields.forEach((name, i) => {
-        o[name] = row[i]
+      fields.forEach((name) => {
+        o[name] = row[name]
       })
       return o
     })

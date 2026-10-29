@@ -123,6 +123,11 @@ watch(activeTab, (v) => {
 </template>
 
 <style>
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('/fonts/pressstart2p.woff2') format('woff2');
+  font-display: swap;
+}
 :root {
   --bg: #141828;
   --panel: #1c2138;

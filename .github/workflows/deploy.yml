@@ -26,9 +26,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: |
-          mkdir -p public/minecraft
-          mv index.html public/minecraft/index.html
-          git show 9e08699:index.html > index.html
           npm ci || npm install
           npm run build
       - uses: actions/upload-pages-artifact@v3
